@@ -1889,6 +1889,53 @@ if (DEMO_MODE) {
     setTimeout(() => { hint.textContent = ""; }, 2000);
   };
 
+  // Call summariser normally hits the Edge Function's /summarize-call route,
+  // which fans out to the LLM. Demo mode has no backend, so derive a plausible
+  // summary from the pasted transcription itself.
+  handleGenerateSummary = function() {
+    const transcription = document.getElementById("summary-transcription").value.trim();
+    const outputEl = document.getElementById("summary-output");
+    const runBtn = document.getElementById("summary-run-btn");
+    const copyBtn = document.getElementById("summary-copy-btn");
+
+    if (!transcription) {
+      outputEl.className = "summary-output err";
+      outputEl.textContent = "Please paste a call transcription first.";
+      return;
+    }
+
+    runBtn.disabled = true;
+    copyBtn.disabled = true;
+    outputEl.className = "summary-output loading";
+    outputEl.textContent = "Generating summary…";
+
+    setTimeout(() => {
+      const parsed = parseRaw(transcription);
+      const words = transcription.split(/\s+/).length;
+      const lines = [
+        "Call summary (demo)",
+        "",
+        "Contact: " + (parsed.contact_name || "not stated"),
+        "Company: " + (parsed.company || "not stated"),
+        "Transfer type: " + (parsed.type_of_transfer || "not stated"),
+        "",
+        "Discussion: The rep introduced the product and confirmed the contact's",
+        "email before agreeing to send program details. The contact was receptive",
+        "but did not commit to a timeline on this call.",
+        "",
+        "Suggested next step: Send the follow-up material, then have the assigned",
+        "AE call back within 24 hours to qualify budget and timing.",
+        "",
+        "(" + words + " words of transcript summarised. Connect a Supabase Edge",
+        "Function with DIFY_API_KEY set to generate real LLM summaries.)",
+      ];
+      runBtn.disabled = false;
+      copyBtn.disabled = false;
+      outputEl.className = "summary-output";
+      outputEl.textContent = lines.join("\n");
+    }, 600);
+  };
+
   handleAgentRun = function() {
     const rawMsg = document.getElementById("agent-raw-msg").value.trim();
     if (!rawMsg) { const r = document.getElementById("agent-result"); r.className = "run-result err"; r.textContent = "Please paste the lead message."; return; }
