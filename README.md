@@ -1,8 +1,36 @@
 # AI Lead Distribution System
 
-An AI-powered lead routing and outreach system that automates the full lifecycle of inbound sales leads — from intake and qualification through AE assignment, email generation, human review, and delivery tracking.
+An AI-powered lead routing and outreach system that automates the full lifecycle
+of inbound sales leads — from intake and qualification through AE assignment,
+email generation, human review, and delivery tracking.
 
-Built as a production tool to replace manual lead handoff workflows with a structured, AI-assisted pipeline.
+Built as a production tool to replace a manual lead handoff workflow with a
+structured, AI-assisted pipeline.
+
+## Try it
+
+**[▶ Open the live demo](https://jinyufish.github.io/ai-lead-distribution-demo/)** — sign in as `admin@demo.com` for the
+reviewer view or `agent@demo.com` for the agent view, password `demo` for both.
+
+No setup, no backend, nothing to install: the frontend ships with a demo mode
+that activates whenever `SUPABASE_URL` is left as a placeholder, so the whole UI
+runs against sample data in the browser. Every screen below is reachable from
+that link.
+
+![Admin dashboard](docs/admin-dashboard.jpg)
+
+The reviewer dashboard: per-AE load tracking, transfer-type breakdown, and the
+lead queue with its AI decision and send state.
+
+![Lead review drawer](docs/lead-review.jpg)
+
+Opening a lead shows the AI's decision and reasoning, and lets a reviewer edit
+the drafted email before approving it.
+
+![Agent submission view](docs/agent-submit.jpg)
+
+Agents paste a raw lead message; the system parses it, qualifies it, assigns an
+AE, and drafts the outreach email.
 
 ---
 
@@ -80,15 +108,19 @@ Built-in AE stats view showing emails sent, pending counts, and per-date-range r
 ## Project Structure
 
 ```
-├── app.html                          # Frontend — admin + agent UI
+├── index.html                        # Frontend — admin + agent UI, incl. demo mode
 ├── server.js                         # Local Express SMTP relay (development)
 ├── api/
 │   └── send-email.js                 # Vercel serverless SMTP relay (production)
 ├── supabase/
 │   ├── config.toml                   # Supabase project config
+│   ├── seed.sql                      # Demo AEs and leads
+│   ├── migrations/
+│   │   └── 0001_init.sql             # Schema — tables, indexes, RLS
 │   └── functions/
 │       └── lead-distribution/
 │           └── index.ts              # Edge Function — core routing logic
+├── docs/                             # README screenshots
 ├── package.json
 ├── vercel.json                       # Vercel deployment config
 └── .gitignore
@@ -104,14 +136,6 @@ Built-in AE stats view showing emails sent, pending counts, and per-date-range r
 - A Vercel account (for serverless deployment)
 - Outlook / Office 365 SMTP credentials
 - A configured AI workflow endpoint (e.g., Dify)
-
-### Try It Without a Backend
-
-`app.html` ships with a demo mode that activates automatically while
-`SUPABASE_URL` is still the placeholder value. Open the file in a browser and
-sign in with `admin@demo.com` (admin view) or `agent@demo.com` (agent view),
-password `demo`, to explore the full UI against sample leads — no Supabase,
-Dify, or SMTP setup required. Filling in real credentials turns demo mode off.
 
 ### Environment Variables
 
@@ -141,7 +165,7 @@ DEFAULT_EMAIL_SIGNATURE=               # optional fallback signature
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by the Supabase
 runtime. The frontend's own `SUPABASE_URL` / `SUPABASE_ANON` live at the top of
-`app.html`.
+`index.html`.
 
 ### Local Development
 
@@ -150,7 +174,20 @@ npm install
 node server.js
 ```
 
+### Database
+
+```bash
+supabase db push                  # apply supabase/migrations
+psql "$DATABASE_URL" -f supabase/seed.sql   # optional demo rows
+```
+
+Edit the AE email addresses in `seed.sql` first — leads are routed to an AE and
+the drafted email is sent to that AE's address, so they need to be inboxes you
+can actually open.
+
 ### Deployment
 
+- **Demo frontend**: served from this repo by GitHub Pages — `index.html` is
+  fully self-contained, so no build step is involved.
 - **Frontend + email relay**: Deploy to Vercel (`vercel --prod`)
 - **Edge Function**: Deploy via Supabase CLI (`supabase functions deploy lead-distribution`)

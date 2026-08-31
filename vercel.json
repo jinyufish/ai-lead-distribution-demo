@@ -3,7 +3,6 @@
   "buildCommand": null,
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/", "destination": "/app.html" },
     { "source": "/send-email", "destination": "/api/send-email" }
   ]
 }
