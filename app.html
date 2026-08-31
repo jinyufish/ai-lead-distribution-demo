@@ -1669,6 +1669,16 @@ function toast(msg, type = "ok") { const el = document.getElementById("toast"); 
 // ══════════════════════════════════════════════════════════════════════════
 const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE");
 
+// The Call Summary station posts to the Edge Function's /summarize-call route,
+// which the function does not implement — the frontend was shipped ahead of the
+// backend. Demo mode substitutes a local summariser (below), so the station is
+// useful there; against a real backend it would 404, so hide it until the route
+// exists. Delete this block once /summarize-call is implemented.
+if (!DEMO_MODE) {
+  const station = document.getElementById("summary-station");
+  if (station) station.hidden = true;
+}
+
 if (DEMO_MODE) {
   const DEMO_USERS = {
     "admin@demo.com": { id: 1, email: "admin@demo.com", name: "Demo Admin", role: "admin" },
