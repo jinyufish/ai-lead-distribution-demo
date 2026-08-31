@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Lead Distribution</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: #f9fafb; color: #111827; font-size: 13px; line-height: 1.5; min-height: 100vh;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  a { color: #2563eb; text-decoration: none; }
+  input, textarea, select { font-family: inherit; }
+
+  /* ── Page visibility ── */
+  .page { display: none; }
+  .page.active { display: block; }
+  #login-page.active { display: flex; }
+
+  /* ── Login ── */
+  #login-page {
+    align-items: center; justify-content: center; min-height: 100vh;
+    background: #f9fafb;
+  }
+  .login-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 32px; width: 360px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .login-logo {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
+  }
+  .login-logo-icon {
+    width: 28px; height: 28px; background: #111827; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-logo-text { font-size: 15px; font-weight: 700; color: #111827; }
+  .login-label { font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 4px; display: block; }
+  .login-input {
+    width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px;
+    font-size: 13px; color: #111827; outline: none; margin-bottom: 14px;
+  }
+  .login-input:focus { border-color: #111827; }
+  .login-btn {
+    width: 100%; padding: 10px 0; border-radius: 6px; border: none;
+    background: #111827; color: #fff; font-weight: 600; font-size: 14px;
+    margin-top: 4px;
+  }
+  .login-btn:hover { background: #1f2937; }
+  .login-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  .login-error {
+    margin-top: 10px; font-size: 12px; color: #dc2626;
+    display: none; padding: 8px 10px; background: #fef2f2;
+    border: 1px solid #fecaca; border-radius: 4px;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    background: #fff; border-bottom: 1px solid #e5e7eb;
+    padding: 0 28px; position: sticky; top: 0; z-index: 40;
+  }
+  .topbar-inner {
+    max-width: 1280px; margin: 0 auto;
+    height: 52px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo-group { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 24px; height: 24px; background: #111827; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .logo-title { font-size: 13px; font-weight: 700; color: #111827; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .user-chip {
+    font-size: 11px; color: #6b7280; padding: 3px 10px;
+    border: 1px solid #e5e7eb; border-radius: 4px; background: #f9fafb;
+  }
+  .role-chip {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .role-chip.admin { background: #111827; color: #fff; }
+  .role-chip.agent { background: #dbeafe; color: #1d4ed8; }
+  .logout-btn {
+    font-size: 12px; padding: 5px 12px; border: 1px solid #e5e7eb;
+    border-radius: 4px; background: #fff; color: #6b7280;
+  }
+  .logout-btn:hover { background: #f3f4f6; }
+
+  /* ── Agent page ── */
+  .agent-main { max-width: 720px; margin: 0 auto; padding: 32px 28px; }
+  .agent-title { font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+  .agent-sub { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
+  .field-group { margin-bottom: 18px; }
+  .field-label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+  .field-textarea {
+    width: 100%; min-height: 200px; padding: 12px; border: 1px solid #e5e7eb;
+    border-radius: 6px; font-size: 13px; color: #111827; resize: vertical;
+    line-height: 1.6; outline: none;
+  }
+  .field-textarea:focus { border-color: #111827; }
+  .field-input {
+    width: 100%; padding: 9px 12px; border: 1px solid #e5e7eb;
+    border-radius: 6px; font-size: 13px; color: #111827; outline: none;
+  }
+  .field-input:focus { border-color: #111827; }
+  .field-hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+  .run-btn {
+    padding: 10px 28px; border-radius: 6px; border: none;
+    background: #111827; color: #fff; font-weight: 600; font-size: 14px;
+    margin-top: 6px;
+  }
+  .run-btn:hover { background: #1f2937; }
+  .run-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  .run-result {
+    margin-top: 16px; padding: 12px 14px; border-radius: 6px;
+    font-size: 12px; display: none; line-height: 1.6;
+  }
+  .run-result.ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; display: block; }
+  .run-result.err { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; display: block; }
+  .run-result.loading { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; display: block; }
+
+  /* ── Collapsible: Call Summary Generation Station ── */
+  .collapsible-section {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+    margin-bottom: 28px; overflow: hidden;
+  }
+  .collapsible-header {
+    width: 100%; display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; padding: 14px 18px; border: none; background: transparent; text-align: left;
+  }
+  .collapsible-header:hover { background: #f9fafb; }
+  .collapsible-header-text { flex: 1; min-width: 0; }
+  .collapsible-title { font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 3px; }
+  .collapsible-sub { font-size: 12px; color: #6b7280; line-height: 1.5; }
+  .collapsible-chevron { flex-shrink: 0; margin-top: 3px; transition: transform 0.15s ease; color: #9ca3af; }
+  .collapsible-chevron.open { transform: rotate(180deg); }
+  .collapsible-body { padding: 4px 18px 18px; border-top: 1px solid #f3f4f6; }
+  .summary-station-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px; }
+  @media (max-width: 720px) { .summary-station-grid { grid-template-columns: 1fr; } }
+  .summary-panel-label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+  .summary-output {
+    min-height: 220px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;
+    font-size: 12px; color: #111827; line-height: 1.7; background: #f9fafb;
+    white-space: pre-wrap; overflow-y: auto;
+  }
+  .summary-output.placeholder { color: #9ca3af; }
+  .summary-output.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+  .summary-output.loading { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+  .summary-actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .summary-copy-btn {
+    font-size: 12px; padding: 5px 12px; border: 1px solid #e5e7eb; border-radius: 4px;
+    background: #fff; color: #6b7280;
+  }
+  .summary-copy-btn:hover { background: #f3f4f6; }
+  .summary-copy-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .summary-run-btn {
+    font-size: 12px; padding: 5px 12px; border-radius: 4px; border: none;
+    background: #111827; color: #fff; font-weight: 600;
+  }
+  .summary-run-btn:hover { background: #1f2937; }
+  .summary-run-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  .summary-disclaimer { font-size: 11px; color: #9ca3af; }
+
+  .submissions-section { margin-top: 32px; }
+  .submissions-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .submissions-controls { display: flex; align-items: center; gap: 8px; }
+  .submissions-refresh {
+    font-size: 12px; padding: 3px 10px; border: 1px solid #e5e7eb;
+    border-radius: 4px; background: #fff; color: #6b7280;
+  }
+  .submissions-refresh:hover { background: #f3f4f6; }
+  .sub-date-input {
+    font-size: 12px; padding: 3px 8px; border: 1px solid #e5e7eb;
+    border-radius: 4px; background: #fff; color: #6b7280;
+  }
+  .submissions-list {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;
+    overflow: hidden;
+  }
+  .submissions-empty { padding: 20px; text-align: center; color: #9ca3af; font-size: 12px; }
+  .sub-row {
+    display: grid; grid-template-columns: 1fr 110px 100px 60px;
+    gap: 12px; align-items: center; padding: 10px 14px;
+    border-bottom: 1px solid #f3f4f6; font-size: 12px;
+  }
+  .sub-row:last-child { border-bottom: none; }
+  .sub-lead { min-width: 0; }
+  .sub-company { font-weight: 500; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sub-contact { color: #9ca3af; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sub-status { font-size: 11px; }
+  .sub-status.processing { color: #d97706; }
+  .sub-status.sent { color: #2563eb; font-weight: 500; }
+  .sub-status.pending { color: #d97706; }
+  .sub-status.rejected { color: #9ca3af; }
+  .sub-status.duplicate { color: #6b7280; }
+  .sub-status.failed { color: #dc2626; }
+  .sub-ai { font-size: 11px; }
+  .sub-time { font-size: 11px; color: #9ca3af; text-align: right; }
+
+  /* ── Admin dashboard (same styles as before) ── */
+  .admin-main { max-width: 1280px; margin: 0 auto; padding: 24px 28px; }
+  .stat-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  .stat-card {
+    flex: 1; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 12px;
+  }
+  .stat-label { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; white-space: nowrap; }
+  .stat-val { font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .stat-pct { font-size: 10px; font-weight: 500; color: #9ca3af; margin-left: 3px; }
+
+  .section-label {
+    font-size: 10px; font-weight: 600; color: #9ca3af; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 10px;
+  }
+
+  .table-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-size: 10px; font-weight: 600; color: #9ca3af; text-transform: uppercase;
+    letter-spacing: 0.07em; padding: 8px 14px; text-align: left;
+    border-bottom: 1px solid #e5e7eb; background: #f9fafb; white-space: nowrap;
+  }
+  th.right { text-align: right; }
+  td { font-size: 12px; padding: 9px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+  td.right { text-align: right; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  .ae-avatar {
+    width: 24px; height: 24px; border-radius: 3px; background: #111827;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #fff; margin-right: 8px; vertical-align: middle;
+  }
+  .num-blue { font-weight: 600; color: #2563eb; }
+  .num-bold { font-weight: 700; color: #111827; }
+  .num-muted { color: #d1d5db; }
+  .num-orange { font-weight: 600; color: #d97706; }
+
+  /* Lead table */
+  #ae-section { margin-bottom: 20px; }
+  .lead-table-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+  .lead-toolbar {
+    padding: 12px 20px; border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .tab-group { display: flex; gap: 6px; }
+  .tab-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px; border-radius: 4px; border: 1px solid #e5e7eb;
+    font-size: 12px; font-weight: 500; background: transparent; color: #6b7280;
+  }
+  .tab-btn:hover { background: #f9fafb; }
+  .tab-btn.active { background: #111827; color: #fff; border-color: #111827; }
+  .tab-count {
+    font-size: 10px; font-weight: 700; min-width: 16px; text-align: center;
+    background: #f3f4f6; color: #374151; border-radius: 3px; padding: 0 4px;
+  }
+  .tab-btn.active .tab-count { background: rgba(255,255,255,0.2); color: #fff; }
+
+  .sort-wrap { position: relative; }
+  .sort-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border: 1px solid #e5e7eb; border-radius: 4px;
+    background: #fff; font-size: 12px; color: #374151;
+  }
+  .sort-dropdown {
+    position: absolute; top: calc(100% + 4px); right: 0;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 4px; z-index: 50; min-width: 160px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08); display: none;
+  }
+  .sort-dropdown.open { display: block; }
+  .sort-option {
+    display: block; width: 100%; text-align: left;
+    padding: 7px 12px; border: none; border-radius: 4px;
+    background: transparent; font-size: 12px; color: #374151;
+  }
+  .sort-option:hover { background: #f3f4f6; }
+  .sort-option.active { background: #f3f4f6; font-weight: 600; color: #111827; }
+
+  .lead-header {
+    display: grid;
+    grid-template-columns: 28px minmax(150px,2fr) 120px 80px 70px 110px 130px 110px 90px 55px;
+    column-gap: 14px;
+    padding: 8px 20px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;
+  }
+  .th-cell {
+    font-size: 10px; font-weight: 600; color: #9ca3af;
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .th-cell.right { text-align: right; }
+  .lead-row {
+    display: grid;
+    grid-template-columns: 28px minmax(150px,2fr) 120px 80px 70px 110px 130px 110px 90px 55px;
+    column-gap: 14px;
+    align-items: center; padding: 0 20px;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: pointer; min-height: 48px; background: #fff;
+  }
+  .row-send-btn {
+    font-size: 11px; padding: 3px 10px; border-radius: 4px;
+    border: 1px solid #111827; background: #fff; color: #111827; cursor: pointer;
+  }
+  .row-send-btn:hover { background: #111827; color: #fff; }
+  .row-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .row-send-status { font-size: 11px; }
+  .row-send-status.sent { color: #2563eb; font-weight: 500; }
+  .row-send-status.rejected { color: #9ca3af; }
+  .row-send-status.failed { color: #ea580c; }
+  .lead-row:hover { background: #fafafa; }
+  .row-num { font-size: 11px; color: #d1d5db; }
+  .row-primary { font-size: 13px; font-weight: 500; color: #111827; margin-bottom: 1px; }
+  .row-secondary { font-size: 11px; color: #9ca3af; }
+  .row-ae { font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .no-ae { color: #ef4444; }
+  .row-transfer { font-size: 11px; color: #6b7280; }
+  .row-reviewer { font-size: 11px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-reviewer.none { color: #d1d5db; }
+  .row-submitter { font-size: 11px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-submitter.none { color: #d1d5db; }
+  .row-interest { font-size: 11px; font-weight: 500; }
+  .row-interest.high { color: #059669; }
+  .row-interest.medium { color: #d97706; }
+  .row-interest.low { color: #9ca3af; }
+  .row-time { font-size: 11px; color: #9ca3af; text-align: right; }
+  .empty-leads { padding: 40px 20px; text-align: center; color: #9ca3af; font-size: 13px; }
+  .lead-footer {
+    padding: 10px 20px; background: #f9fafb; border-top: 1px solid #f3f4f6;
+    font-size: 11px; color: #9ca3af;
+  }
+
+  /* Badge */
+  .badge {
+    display: inline-flex; padding: 2px 7px; border-radius: 4px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+    text-transform: uppercase; white-space: nowrap; border: 1px solid;
+  }
+
+  /* Drawer */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.15); z-index: 70; display: none; }
+  .overlay.open { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 520px;
+    background: #fff; border-left: 1px solid #e5e7eb; z-index: 80;
+    display: flex; flex-direction: column; box-shadow: -8px 0 32px rgba(0,0,0,0.08);
+    transform: translateX(100%); transition: transform 0.2s ease;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
+  .drawer-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .drawer-title { font-size: 14px; font-weight: 600; color: #111827; }
+  .drawer-sub { font-size: 12px; color: #6b7280; margin-top: 3px; }
+  .close-btn {
+    width: 28px; height: 28px; border: 1px solid #e5e7eb; border-radius: 4px;
+    background: transparent; color: #6b7280; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .drawer-tabs { display: flex; border-bottom: 1px solid #e5e7eb; margin-bottom: -17px; }
+  .drawer-tab {
+    padding: 7px 14px; border: none; background: transparent;
+    font-size: 12px; font-weight: 500; color: #9ca3af;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .drawer-tab.active { color: #111827; border-bottom-color: #111827; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 20px; }
+  .drawer-panel { display: none; }
+  .drawer-panel.active { display: block; }
+  .detail-row { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #f3f4f6; }
+  .detail-label { font-size: 11px; color: #9ca3af; min-width: 110px; flex-shrink: 0; }
+  .detail-val { font-size: 12px; color: #111827; flex: 1; line-height: 1.5; word-break: break-all; }
+  .ai-note {
+    margin-top: 16px; padding: 12px 14px; background: #fffbeb;
+    border: 1px solid #fde68a; border-radius: 6px;
+  }
+  .ai-note-label { font-size: 10px; font-weight: 700; color: #92400e; text-transform: uppercase; margin-bottom: 6px; }
+  .ai-note-body { font-size: 12px; color: #78350f; line-height: 1.6; }
+  .history-section { margin-top: 16px; }
+  .history-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; margin-bottom: 8px; }
+  .history-row { font-size: 11px; color: #6b7280; padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
+  .history-row strong { font-weight: 600; color: #374151; }
+  .email-field { margin-bottom: 10px; }
+  .email-field-label { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+  .email-field-val { font-size: 12px; color: #111827; padding: 8px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; }
+  .email-body-pre { font-size: 12px; color: #111827; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 10px 12px; white-space: pre-wrap; font-family: inherit; margin: 0; line-height: 1.7; }
+  .email-input {
+    width: 100%; font-size: 12px; color: #111827;
+    padding: 8px 12px; background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 4px; outline: none; font-family: inherit;
+  }
+  .email-input:focus { border-color: #111827; }
+  .email-textarea {
+    width: 100%; min-height: 220px; font-size: 12px; color: #111827;
+    padding: 10px 12px; background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 4px; outline: none; font-family: inherit;
+    line-height: 1.7; resize: vertical;
+  }
+  .email-textarea:focus { border-color: #111827; }
+  .email-save-row {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 12px; margin-top: 10px;
+  }
+  .email-save-hint { font-size: 11px; color: #d97706; }
+  .btn-save-email {
+    font-size: 12px; padding: 6px 14px; border-radius: 4px;
+    border: 1px solid #111827; background: #111827; color: #fff; font-weight: 500;
+  }
+  .btn-save-email:hover { background: #1f2937; }
+  .btn-save-email:disabled { background: #9ca3af; border-color: #9ca3af; cursor: not-allowed; }
+  .raw-pre { font-size: 11px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 14px; white-space: pre-wrap; font-family: monospace; line-height: 1.7; margin: 0; }
+  .drawer-footer { padding: 14px 20px; border-top: 1px solid #e5e7eb; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+  .action-row { display: flex; gap: 8px; }
+  .btn-approve { flex: 1; padding: 9px 0; border-radius: 4px; border: none; background: #111827; color: #fff; font-weight: 600; font-size: 13px; }
+  .btn-approve:hover { background: #1f2937; }
+  .btn-approve:disabled { background: #d1fae5; cursor: not-allowed; }
+  .btn-disapprove { flex: 1; padding: 9px 0; border-radius: 4px; border: 1px solid #e5e7eb; background: #fff; color: #374151; font-weight: 500; font-size: 13px; }
+  .btn-reverse { width: 100%; padding: 8px 0; border-radius: 4px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; font-weight: 500; font-size: 12px; }
+
+  /* Date picker */
+  .date-btn { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid #e5e7eb; border-radius: 4px; background: #fff; font-size: 12px; color: #374151; }
+  .date-dropdown { position: absolute; top: calc(100% + 4px); right: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; z-index: 60; min-width: 200px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); display: none; }
+  .date-dropdown.open { display: block; }
+  .date-section-label { padding: 4px 10px 5px; font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; }
+  .date-option { display: block; width: 100%; text-align: left; padding: 7px 10px; border: none; border-radius: 4px; background: transparent; font-size: 12px; color: #374151; }
+  .date-option:hover { background: #f3f4f6; }
+  .date-option.active { background: #f3f4f6; font-weight: 600; }
+  .date-divider { height: 1px; background: #f3f4f6; margin: 4px 0; }
+  #date-input-wrap { padding: 4px 8px 6px; }
+  #date-input-wrap input[type="date"] { width: 100%; padding: 5px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px; font-family: inherit; outline: none; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    background: #111827; color: #f9fafb; padding: 11px 16px; border-radius: 6px;
+    font-size: 13px; max-width: 360px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  #toast.show { opacity: 1; }
+  #toast.ok { border-left: 3px solid #10b981; }
+  #toast.warn { border-left: 3px solid #f59e0b; }
+  #toast.err { border-left: 3px solid #ef4444; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- LOGIN PAGE                                                             -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="login-page" class="page active">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">
+        <svg width="14" height="14" viewBox="0 0 12 12" fill="none"><polyline points="1,9 4,5 7,7 11,2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span class="login-logo-text">AI Lead Distribution</span>
+    </div>
+    <label class="login-label">Email</label>
+    <input class="login-input" type="email" id="login-email" placeholder="you@example.com" />
+    <label class="login-label">Password</label>
+    <input class="login-input" type="password" id="login-password" placeholder="••••••••" />
+    <button class="login-btn" id="login-btn" onclick="handleLogin()">Sign in</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- AGENT PAGE                                                             -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="agent-page" class="page">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="logo-group">
+        <div class="logo-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="1,9 4,5 7,7 11,2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span class="logo-title">AI Lead Distribution</span>
+      </div>
+      <div class="topbar-right">
+        <span class="role-chip agent">Agent</span>
+        <span class="user-chip" id="agent-user-chip">—</span>
+        <button class="logout-btn" onclick="handleLogout()">Sign out</button>
+      </div>
+    </div>
+  </div>
+  <div class="agent-main">
+
+    <!-- Call Summary Generation Station (foldable) -->
+    <div class="collapsible-section" id="summary-station">
+      <button class="collapsible-header" onclick="toggleSummaryStation()">
+        <div class="collapsible-header-text">
+          <div class="collapsible-title">Call Summary Generation Station</div>
+          <div class="collapsible-sub">Use it when your AI assist summary function is not working as expected or if you believe your current summary is not good. Don't forget, AI can make mistakes, please double check the content such as client name, email address, loan names, and appointment time. This is a one time tool, your summary won't be stored.</div>
+        </div>
+        <svg class="collapsible-chevron" id="summary-station-chevron" width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="collapsible-body" id="summary-station-body" style="display:none">
+        <div class="summary-station-grid">
+          <div class="summary-panel">
+            <label class="summary-panel-label">Call transcription</label>
+            <textarea class="field-textarea" id="summary-transcription" style="min-height:220px" placeholder="Paste the call transcription text here..."></textarea>
+            <div class="summary-actions">
+              <button class="summary-run-btn" id="summary-run-btn" onclick="handleGenerateSummary()">Generate summary</button>
+            </div>
+          </div>
+          <div class="summary-panel">
+            <label class="summary-panel-label">Generated summary</label>
+            <div class="summary-output placeholder" id="summary-output">Paste a transcription on the left and click "Generate summary".</div>
+            <div class="summary-actions">
+              <button class="summary-copy-btn" id="summary-copy-btn" onclick="handleCopySummary()" disabled>Copy</button>
+              <span class="summary-disclaimer">Not stored — double-check names, emails, loan names &amp; appointment times.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h1 class="agent-title">Submit new lead</h1>
+    <p class="agent-sub">Paste the lead message and session recording link. The AI workflow will qualify and route it automatically.</p>
+
+    <div class="field-group">
+      <label class="field-label">Raw lead message *</label>
+      <textarea class="field-textarea" id="agent-raw-msg" placeholder="Paste the full lead message here...&#10;&#10;Context: We connected with...&#10;Company: ...&#10;Contact Name: ...&#10;Phone: ..."></textarea>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Call recording transcription</label>
+      <textarea class="field-textarea" id="agent-recording" placeholder="Paste the call transcription text here..." style="min-height:140px"></textarea>
+      <div class="field-hint">Optional — paste the transcribed text of the call recording</div>
+    </div>
+
+    <button class="run-btn" id="agent-run-btn" onclick="handleAgentRun()">Submit</button>
+
+    <div class="run-result" id="agent-result"></div>
+
+    <div class="submissions-section" id="my-submissions-section">
+      <div class="submissions-header">
+        <span class="section-label">My submissions</span>
+        <div class="submissions-controls">
+          <input type="date" id="sub-date-input" class="sub-date-input" onchange="onSubDateChange()" />
+          <button class="submissions-refresh" id="sub-clear-btn" onclick="clearSubDate()" style="display:none">Clear date</button>
+          <button class="submissions-refresh" onclick="loadMySubmissions()">↻</button>
+        </div>
+      </div>
+      <div id="submissions-list" class="submissions-list">
+        <div class="submissions-empty">No submissions yet.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- ADMIN PAGE                                                             -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div id="admin-page" class="page">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="logo-group">
+        <div class="logo-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="1,9 4,5 7,7 11,2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span class="logo-title">AI Lead Distribution</span>
+      </div>
+      <div class="topbar-right">
+        <div style="position:relative" id="date-wrap">
+          <button class="date-btn" onclick="toggleDateDrop(event)">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="2" width="10" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M1 5h10M4 1v2M8 1v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            <span id="date-btn-label">Today</span>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="date-dropdown" id="date-dropdown">
+            <div class="date-section-label">Quick select</div>
+            <div id="date-options-list"></div>
+            <div class="date-divider"></div>
+            <div class="date-section-label">Custom range</div>
+            <div id="date-input-wrap" style="display:flex;align-items:center;gap:6px">
+              <input type="date" id="date-from-input" onchange="onCustomRange()" />
+              <span style="color:#9ca3af;font-size:12px">to</span>
+              <input type="date" id="date-to-input" onchange="onCustomRange()" />
+            </div>
+          </div>
+        </div>
+        <button class="date-btn" onclick="fetchFromBackend()" title="Refresh">↻ Refresh</button>
+        <span class="role-chip admin">Admin</span>
+        <span class="user-chip" id="admin-user-chip">—</span>
+        <button class="logout-btn" onclick="handleLogout()">Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-main">
+    <!-- Stats -->
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Total leads</div><div class="stat-val" id="s-total">0</div></div>
+      <div class="stat-card"><div class="stat-label">Not sent</div><div class="stat-val" style="color:#d97706" id="s-not_sent">0</div></div>
+      <div class="stat-card"><div class="stat-label">Emails sent</div><div class="stat-val" style="color:#2563eb" id="s-sent">0</div></div>
+      <div class="stat-card"><div class="stat-label">Rejected</div><div class="stat-val" style="color:#6b7280" id="s-rejected">0</div></div>
+      <div class="stat-card"><div class="stat-label">Live transfers</div><div class="stat-val" style="color:#059669"><span id="s-live">0</span><span class="stat-pct" id="s-live-pct"></span></div></div>
+      <div class="stat-card"><div class="stat-label">Scheduled transfers</div><div class="stat-val" style="color:#7c3aed"><span id="s-scheduled">0</span><span class="stat-pct" id="s-scheduled-pct"></span></div></div>
+      <div class="stat-card"><div class="stat-label">Email transfers</div><div class="stat-val" style="color:#0891b2"><span id="s-email">0</span><span class="stat-pct" id="s-email-pct"></span></div></div>
+    </div>
+
+    <!-- AE Tracker -->
+    <div id="ae-section">
+      <div class="section-label">AE email tracker</div>
+      <div class="table-wrap">
+        <table><thead><tr>
+          <th>AE</th><th>Email</th>
+          <th class="right" id="ae-sent-header">Sent today</th>
+          <th class="right">Pending</th>
+        </tr></thead><tbody id="ae-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Leads -->
+    <div class="lead-table-wrap">
+      <div class="lead-toolbar">
+        <div class="tab-group">
+          <button class="tab-btn active" data-tab="all" onclick="setTab(this)">All <span class="tab-count" id="tc-all">0</span></button>
+          <button class="tab-btn" data-tab="not_sent" onclick="setTab(this)">Not sent <span class="tab-count" id="tc-not_sent">0</span></button>
+          <button class="tab-btn" data-tab="sent" onclick="setTab(this)">Sent <span class="tab-count" id="tc-sent">0</span></button>
+          <button class="tab-btn" data-tab="rejected" onclick="setTab(this)">Rejected <span class="tab-count" id="tc-rejected">0</span></button>
+          <button class="tab-btn" data-tab="ai_approve" onclick="setTab(this)">AI: Approve <span class="tab-count" id="tc-ai_approve">0</span></button>
+          <button class="tab-btn" data-tab="ai_review" onclick="setTab(this)">AI: Review <span class="tab-count" id="tc-ai_review">0</span></button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="sort-wrap">
+            <button class="sort-btn" onclick="toggleTransferDrop(event)">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 2h10L7.5 6.5V10l-3 1.2V6.5L1 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+              <span id="transfer-label">All transfers</span>
+            </button>
+            <div class="sort-dropdown" id="transfer-dropdown">
+              <button class="sort-option active" data-transfer="all" onclick="setTransferFilter(this)">All transfers</button>
+              <button class="sort-option" data-transfer="live" onclick="setTransferFilter(this)">Live</button>
+              <button class="sort-option" data-transfer="scheduled" onclick="setTransferFilter(this)">Scheduled</button>
+              <button class="sort-option" data-transfer="email" onclick="setTransferFilter(this)">Email</button>
+              <button class="sort-option" data-transfer="unknown" onclick="setTransferFilter(this)">Unclassified</button>
+            </div>
+          </div>
+          <div class="sort-wrap">
+            <button class="sort-btn" onclick="toggleSortDrop(event)">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <span id="sort-label">Newest first</span>
+            </button>
+            <div class="sort-dropdown" id="sort-dropdown">
+              <button class="sort-option active" data-sort="time_desc" onclick="setSort(this)">Newest first</button>
+              <button class="sort-option" data-sort="time_asc" onclick="setSort(this)">Oldest first</button>
+              <button class="sort-option" data-sort="status" onclick="setSort(this)">By status</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="lead-header">
+        <div class="th-cell">#</div><div class="th-cell">Lead</div><div class="th-cell">AE</div>
+        <div class="th-cell">Transfer</div><div class="th-cell">Interest</div>
+        <div class="th-cell">AI decision</div><div class="th-cell">Send</div>
+        <div class="th-cell">Submitted by</div>
+        <div class="th-cell">Reviewed by</div>
+        <div class="th-cell right">Time</div>
+      </div>
+      <div id="lead-body"></div>
+      <div class="lead-footer" id="lead-footer">0 leads</div>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-top">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="drawer-title" id="d-company">—</span>
+          <span id="d-badge"></span>
+        </div>
+        <div class="drawer-sub" id="d-sub">—</div>
+      </div>
+      <button class="close-btn" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="drawer-tabs">
+      <button class="drawer-tab active" data-panel="info" onclick="setDrawerTab(this)">Details</button>
+      <button class="drawer-tab" data-panel="email" onclick="setDrawerTab(this)">Email</button>
+      <button class="drawer-tab" data-panel="raw" onclick="setDrawerTab(this)">Raw</button>
+    </div>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-panel active" id="panel-info">
+      <div id="detail-fields"></div>
+      <div id="ai-note-wrap" style="display:none" class="ai-note"><div class="ai-note-label">AI review note</div><div class="ai-note-body" id="d-ai-explanation"></div></div>
+      <div class="history-section" id="history-wrap" style="display:none"><div class="history-label">Action history</div><div id="d-history"></div></div>
+    </div>
+    <div class="drawer-panel" id="panel-email">
+      <div class="email-field"><div class="email-field-label">Subject</div><input class="email-input" id="d-email-subject" /></div>
+      <div class="email-field"><div class="email-field-label">To</div><input class="email-input" id="d-email-to" list="ae-emails" onchange="onToChanged()" /><datalist id="ae-emails"></datalist></div>
+      <div class="email-field"><div class="email-field-label">CC</div><input class="email-input" id="d-email-cc" placeholder="comma-separated" /></div>
+      <div class="email-field"><div class="email-field-label">Body</div><textarea class="email-textarea" id="d-email-body"></textarea></div>
+      <div class="email-save-row">
+        <span class="email-save-hint" id="d-email-hint"></span>
+        <button class="btn-save-email" id="btn-save-email" onclick="handleSaveEmail()">Save changes</button>
+      </div>
+    </div>
+    <div class="drawer-panel" id="panel-raw"><pre class="raw-pre" id="d-raw"></pre></div>
+  </div>
+  <div class="drawer-footer">
+    <div class="action-row" id="action-row" style="display:none">
+      <button class="btn-approve" id="btn-approve" onclick="handleApprove()">Approve &amp; send</button>
+      <button class="btn-disapprove" id="btn-disapprove" onclick="handleDisapprove()">Disapprove</button>
+    </div>
+    <button class="btn-reverse" id="btn-reverse" style="display:none" onclick="handleReverse()">↩ Reverse decision → set to manual review</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════════════
+const SUPABASE_URL  = "https://YOUR_SUPABASE_URL.supabase.co";
+const SUPABASE_ANON = "YOUR_SUPABASE_ANON_KEY";
+const API_BASE      = SUPABASE_URL + "/functions/v1/lead-distribution";
+// Optional address CC'd on every outbound lead email. Leave blank for none.
+const DEFAULT_CC    = "";
+// NOTE: Dify is called server-side only, via the Edge Function's /dify-run
+// proxy. The Dify base URL and API key live in Supabase secrets — never in
+// this file, which is served to every browser.
+
+let sb;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } catch (e) { sb = null; }
+
+// ══════════════════════════════════════════════════════════════════════════
+// AUTH STATE
+// ══════════════════════════════════════════════════════════════════════════
+let currentUser = null;   // { id, email, name, role }
+
+function showPage(id) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  const el = document.getElementById(id);
+  if (el) el.classList.add("active");
+}
+
+// On load: check session
+async function initAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadProfile(session.user);
+  } else {
+    showPage("login-page");
+  }
+}
+
+async function loadProfile(user) {
+  const { data: profile, error } = await sb
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  if (error || !profile) {
+    showPage("login-page");
+    showLoginError("Account not authorized. Contact admin.");
+    await sb.auth.signOut();
+    return;
+  }
+
+  currentUser = { id: user.id, email: profile.email, name: profile.name, role: profile.role };
+
+  if (profile.role === "admin") {
+    document.getElementById("admin-user-chip").textContent = profile.name;
+    showPage("admin-page");
+    initDashboard();
+  } else {
+    document.getElementById("agent-user-chip").textContent = profile.name;
+    showPage("agent-page");
+    loadMySubmissions();
+  }
+}
+
+async function handleLogin() {
+  const email = document.getElementById("login-email").value.trim();
+  const pass  = document.getElementById("login-password").value;
+  if (!email || !pass) return showLoginError("Enter email and password");
+
+  document.getElementById("login-btn").disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  document.getElementById("login-btn").disabled = false;
+
+  if (error) return showLoginError(error.message);
+  await loadProfile(data.user);
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  showPage("login-page");
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById("login-error");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// AGENT — Call Summary Generation Station (standalone, not stored)
+// ══════════════════════════════════════════════════════════════════════════
+function toggleSummaryStation() {
+  const body = document.getElementById("summary-station-body");
+  const chevron = document.getElementById("summary-station-chevron");
+  const open = body.style.display !== "none";
+  body.style.display = open ? "none" : "block";
+  chevron.classList.toggle("open", !open);
+}
+
+function handleGenerateSummary() {
+  const transcription = document.getElementById("summary-transcription").value.trim();
+  const outputEl = document.getElementById("summary-output");
+  const runBtn = document.getElementById("summary-run-btn");
+  const copyBtn = document.getElementById("summary-copy-btn");
+
+  if (!transcription) {
+    outputEl.className = "summary-output err";
+    outputEl.textContent = "Please paste a call transcription first.";
+    return;
+  }
+
+  runBtn.disabled = true;
+  copyBtn.disabled = true;
+  outputEl.className = "summary-output loading";
+  outputEl.textContent = "Generating summary…";
+
+  fetch(API_BASE + "/summarize-call", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + SUPABASE_ANON,
+    },
+    body: JSON.stringify({ transcription }),
+  })
+    .then(async res => {
+      const data = res.ok ? await res.json() : { error: await res.text() };
+      runBtn.disabled = false;
+      if (res.ok && data.summary) {
+        outputEl.className = "summary-output";
+        outputEl.textContent = data.summary;
+        copyBtn.disabled = false;
+      } else {
+        outputEl.className = "summary-output err";
+        outputEl.textContent = "Failed to generate summary: " + (data.error || res.status);
+      }
+    })
+    .catch(e => {
+      runBtn.disabled = false;
+      outputEl.className = "summary-output err";
+      outputEl.textContent = "Cannot reach server: " + e.message;
+    });
+}
+
+function handleCopySummary() {
+  const text = document.getElementById("summary-output").textContent;
+  navigator.clipboard.writeText(text).then(() => toast("Summary copied", "ok"))
+    .catch(() => toast("Could not copy — select and copy manually", "err"));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// AGENT — submit lead to Dify (fire-and-forget) + submissions history
+// ══════════════════════════════════════════════════════════════════════════
+// In-flight submissions the user just kicked off. Keyed by a client-side
+// tempId. When the server responds, we drop the pending entry and reload
+// the persisted list from the server.
+let pendingSubmissions = [];
+let mySubmissions      = [];  // server-side, from GET /leads?submitted_by=
+
+function handleAgentRun() {
+  const rawMsg    = document.getElementById("agent-raw-msg").value.trim();
+  const recording = document.getElementById("agent-recording").value.trim();
+  const resultEl  = document.getElementById("agent-result");
+
+  if (!rawMsg) { resultEl.className = "run-result err"; resultEl.textContent = "Please paste the lead message."; return; }
+
+  const tempId = "tmp-" + Date.now();
+  const parsed = parseRaw(rawMsg);
+  pendingSubmissions.unshift({
+    tempId,
+    company: parsed.company || "New lead",
+    contact_name: parsed.contact_name || "",
+    created_at: new Date().toISOString(),
+    _status: "processing",
+  });
+  renderMySubmissions();
+
+  // Clear the form immediately so the agent can start typing the next one
+  // while this request runs. This is the key UX win — no blocking wait.
+  document.getElementById("agent-raw-msg").value = "";
+  document.getElementById("agent-recording").value = "";
+  resultEl.className = "run-result loading";
+  resultEl.textContent = "Submitted — processing in background. You can submit another lead.";
+
+  fetch(API_BASE + "/dify-run", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + SUPABASE_ANON,
+    },
+    body: JSON.stringify({
+      raw_lead_msg: rawMsg,
+      call_recording: recording || "",
+      email: currentUser?.email || "agent",
+    }),
+  })
+    .then(async res => {
+      const data = res.ok ? await res.json() : { error: await res.text() };
+      pendingSubmissions = pendingSubmissions.filter(p => p.tempId !== tempId);
+      if (res.ok) {
+        loadMySubmissions();  // pull the persisted row so we show real data
+        if (data.lead?.updated) {
+          // A corrected resubmit re-routes when the AE line names a roster AE,
+          // so name the AE it landed on rather than promising "the same AE".
+          const ae = data.lead.assigned_ae_name;
+          toast(ae ? `Lead updated — reopened for ${ae}` : "Lead updated — reopened for review", "ok");
+        } else if (data.lead?.duplicate) {
+          toast("Already submitted — showing existing record", "warn");
+        } else {
+          toast("Lead processed", "ok");
+        }
+      } else {
+        pendingSubmissions.unshift({
+          tempId, company: parsed.company || "Failed lead", contact_name: parsed.contact_name || "",
+          created_at: new Date().toISOString(), _status: "failed", _error: data.error,
+        });
+        renderMySubmissions();
+        toast("Submission failed: " + (data.error || res.status), "err");
+      }
+    })
+    .catch(e => {
+      pendingSubmissions = pendingSubmissions.filter(p => p.tempId !== tempId);
+      pendingSubmissions.unshift({
+        tempId, company: parsed.company || "Failed lead", contact_name: parsed.contact_name || "",
+        created_at: new Date().toISOString(), _status: "failed", _error: e.message,
+      });
+      renderMySubmissions();
+      toast("Cannot reach server: " + e.message, "err");
+    });
+}
+
+let subDate = "";  // "" = all-time (last 100), otherwise "YYYY-MM-DD"
+
+async function loadMySubmissions() {
+  const email = currentUser?.email;
+  if (!email) return;
+  let url = API_BASE + "/leads?submitted_by=" + encodeURIComponent(email);
+  if (subDate) url += "&date=" + subDate;
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      mySubmissions = await res.json();
+      if (!Array.isArray(mySubmissions)) mySubmissions = [];
+    }
+  } catch {}
+  renderMySubmissions();
+}
+
+function onSubDateChange() {
+  subDate = document.getElementById("sub-date-input").value;
+  document.getElementById("sub-clear-btn").style.display = subDate ? "inline-block" : "none";
+  loadMySubmissions();
+}
+function clearSubDate() {
+  subDate = "";
+  document.getElementById("sub-date-input").value = "";
+  document.getElementById("sub-clear-btn").style.display = "none";
+  loadMySubmissions();
+}
+
+function subStatusInfo(lead) {
+  // pending entries have a client-side _status; server rows use `status`.
+  if (lead._status === "processing") return { cls: "processing", label: "Processing…" };
+  if (lead._status === "failed")     return { cls: "failed",     label: "Failed" };
+  if (lead.duplicate)                return { cls: "duplicate",  label: "Duplicate" };
+  const b = sendBucket(lead.status);
+  if (b === "sent")     return { cls: "sent",     label: "Sent" };
+  if (b === "rejected") return { cls: "rejected", label: "Rejected" };
+  return { cls: "pending", label: "Pending review" };
+}
+
+function renderMySubmissions() {
+  const list = document.getElementById("submissions-list");
+  const rows = [...pendingSubmissions, ...mySubmissions];
+  if (rows.length === 0) {
+    list.innerHTML = `<div class="submissions-empty">No submissions yet.</div>`;
+    return;
+  }
+  list.innerHTML = rows.map(l => {
+    const p = l._status ? l : leadFields(l);
+    const company = l._status ? l.company : (p.company || "Unknown");
+    const contact = l._status ? l.contact_name : (p.contact_name || "");
+    const t = fmtDateTime(l.created_at);
+    const info = subStatusInfo(l);
+    const ai = l._status ? "" : aiBadge(l.ai_decision);
+    return `<div class="sub-row"><div class="sub-lead"><div class="sub-company">${company}</div><div class="sub-contact">${contact}</div></div><div class="sub-ai">${ai}</div><div class="sub-status ${info.cls}">${info.label}</div><div class="sub-time">${t}</div></div>`;
+  }).join("");
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ADMIN DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+// ── Date/time display helpers ─────────────────────────────
+function fmtTime(iso) { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+function fmtDate(iso) { return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" }); }
+function fmtDateTime(iso) { return fmtDate(iso) + ", " + fmtTime(iso); }
+function addDays(key, n) { const d = new Date(key + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+
+const STATUS = {
+  ai_approved:           { label: "AI approved",    color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" },
+  pending_manual_review: { label: "Manual review",  color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+  ai_disapproved:        { label: "AI disapproved", color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
+  human_approved:        { label: "Approved",       color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+  human_disapproved:     { label: "Disapproved",    color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" },
+  email_sent:            { label: "Sent",           color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
+  email_failed:          { label: "Failed",         color: "#ea580c", bg: "#fff7ed", border: "#fed7aa" },
+};
+const ACTIONABLE  = ["ai_approved", "pending_manual_review", "ai_disapproved"];
+const REVERSIBLE  = ["human_approved", "human_disapproved", "email_sent", "email_failed"];
+const STATUS_ORDER = ["pending_manual_review","ai_approved","ai_disapproved","human_approved","email_sent","human_disapproved","email_failed"];
+
+function badge(status) {
+  const s = STATUS[status] || STATUS.human_disapproved;
+  return `<span class="badge" style="color:${s.color};background:${s.bg};border-color:${s.border}">${s.label}</span>`;
+}
+
+const AI_DECISION = {
+  approve:       { label: "Approved",      color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" },
+  manual_review: { label: "Need review",   color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+  disapprove:    { label: "Rejected",      color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
+};
+function aiBadge(d) {
+  const raw = String(d || "").toLowerCase();
+  const norm = raw === "approved" ? "approve"
+             : raw === "disapproved" || raw === "rejected" ? "disapprove"
+             : raw;
+  const s = AI_DECISION[norm];
+  if (!s) return `<span style="color:#d1d5db;font-size:11px">—</span>`;
+  return `<span class="badge" style="color:${s.color};background:${s.bg};border-color:${s.border}">${s.label}</span>`;
+}
+
+// Bucket a status into one of: not_sent, sent, rejected. Used by tabs, stats,
+// and the row-level Send button. "not_sent" is anything actionable — the user
+// still needs to decide/act. "email_failed" also goes into not_sent so it
+// stays visible for retry.
+const REJECTED_STATUSES = ["ai_disapproved", "human_disapproved"];
+function sendBucket(status) {
+  if (status === "email_sent") return "sent";
+  if (REJECTED_STATUSES.includes(status)) return "rejected";
+  return "not_sent";
+}
+// Classify a lead's type_of_transfer into one of: live, scheduled, email, or
+// unknown. Agents don't write these uniformly ("Attempted live", "Call
+// scheduled at 3pm EST", ...), so this is keyword-based: scheduling language
+// wins first, then email, then live.
+//
+// "live" used to be the catch-all, so a blank or garbled Type of Transfer line
+// — usually an agent pasting in the wrong thing — silently inflated the live
+// numbers. Nothing is a catch-all now: text matching no bucket lands in
+// "unknown", and every stat card ignores unknown leads (see renderStats).
+// They stay in the list, and the transfer filter has an "Unclassified" option,
+// so a real lead with a botched line can still be found and fixed.
+function transferBucket(lead) {
+  const t = (leadFields(lead).type_of_transfer || "").toLowerCase();
+  if (!t) return "unknown";
+  if (/sched|call\s*back|appointment|\bappt\b|\bat\s+\d|\d{1,2}(:\d{2})?\s*(am|pm)\b|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday/.test(t)) return "scheduled";
+  if (/e-?mail/.test(t)) return "email";
+  if (/live|warm|attempt|\bhot\b|transfer|转接|转入/.test(t)) return "live";
+  return "unknown";
+}
+
+function sendCell(lead) {
+  const b = sendBucket(lead.status);
+  if (b === "sent") {
+    const t = lead.sent_at ? fmtDateTime(lead.sent_at) : "";
+    return `<span class="row-send-status sent">✓ Sent${t ? " · " + t : ""}</span>`;
+  }
+  if (b === "rejected") return `<span class="row-send-status rejected">Rejected</span>`;
+  if (lead.status === "email_failed") return `<button class="row-send-btn" onclick="handleRowSend(event, ${lead.id})">Retry</button>`;
+  return `<button class="row-send-btn" onclick="handleRowSend(event, ${lead.id})">Send</button>`;
+}
+
+// Fields for a lead row. Server rows carry `parsed` (computed by the edge
+// function, which owns the canonical parser); fall back to parsing locally for
+// the optimistic "processing" rows that haven't round-tripped yet.
+function leadFields(lead) {
+  return lead.parsed || parseRaw(lead.raw_lead_msg);
+}
+
+// Local mirror of parseLead() in supabase/functions/lead-distribution/index.ts.
+// Keep the two in sync — this one only runs on not-yet-submitted text.
+function parseRaw(raw) {
+  if (!raw) return {};
+  // Anchor labels to line start (so "a contact at ACG Funding" inside the
+  // Context paragraph isn't mistaken for a label) but tolerate the bullets and
+  // markdown bold that agents paste in, and the label spellings they actually
+  // use — "Contact name:", "Contact:", plain "Name:", and no colon at all
+  // ("Contact Chris Merchant"). Colon form wins; colon-less is the fallback.
+  const get = (label) => {
+    const build = (sep) => new RegExp(
+      "^[ \\t>*\\-•·]*(?:\\*\\*)?\\s*(?:" + label + ")\\s*(?:\\*\\*)?\\s*" + sep + "\\s*(?:\\*\\*)?\\s*(.+?)\\s*(?:\\*\\*)?\\s*$",
+      "im"
+    );
+    const m = raw.match(build("[:：]")) || raw.match(build("[ \\t]"));
+    return m ? m[1].trim() : "";
+  };
+  const sessionMatch = raw.match(/Session[^:\n]*:\s*(https?:\/\/\S+)/i) || raw.match(/(https:\/\/example\.com\/assistant-console\/session\/\S+)/i);
+  return {
+    company: get("Company(?:[\\s_]*name)?"),
+    contact_name: get("Contact(?:[\\s_]*(?:name|person))?|Name"),
+    phone: get("Phone(?:[\\s_]*number)?|Mobile|Cell"),
+    email: get("E-?mail(?:[\\s_]*address)?"),
+    type_of_transfer: get("Type[\\s_]*of[\\s_]*Transfer|Transfer[\\s_]*type"),
+    session_link: sessionMatch ? sessionMatch[1] : "",
+  };
+}
+
+let dateFrom    = todayKey();   // admin view date range (inclusive)
+let dateTo      = todayKey();
+let leads       = [];
+let aeStats     = [];
+let activeTab   = "all";
+let activeSort  = "time_desc";
+let activeTransfer = "all";   // all | live | scheduled | email | unknown
+let selectedId  = null;
+let busy        = false;
+
+// "Today" view = a single-day range on today. Used to gate live actions
+// (approve/disapprove) — those only make sense on today's leads, not on a
+// historical range.
+function isToday() { return dateFrom === todayKey() && dateTo === todayKey(); }
+function isRange() { return dateFrom !== dateTo; }
+
+// Human-friendly label for the current range.
+function rangeLabel() {
+  const today = todayKey();
+  if (dateFrom === dateTo) {
+    if (dateFrom === today) return "Today";
+    if (dateFrom === addDays(today, -1)) return "Yesterday";
+    return dateFrom;
+  }
+  if (dateFrom === addDays(today, -6) && dateTo === today) return "Last 7 days";
+  if (dateFrom === addDays(today, -29) && dateTo === today) return "Last 30 days";
+  return dateFrom + " → " + dateTo;
+}
+
+function initDashboard() {
+  const today = todayKey();
+  const fi = document.getElementById("date-from-input");
+  const ti = document.getElementById("date-to-input");
+  if (fi) fi.max = today;
+  if (ti) ti.max = today;
+  fetchFromBackend();
+  initRealtime();
+  initAutoRefresh();
+}
+
+let lastFetch = 0;
+
+async function fetchFromBackend() {
+  const dateParam = isToday() ? "" : "?from=" + dateFrom + "&to=" + dateTo;
+  try {
+    const res = await fetch(API_BASE + "/leads" + dateParam);
+    if (res.ok) { leads = await res.json(); if (!Array.isArray(leads)) leads = []; }
+  } catch {}
+  try {
+    const res = await fetch(API_BASE + "/aes" + dateParam);
+    if (res.ok) { aeStats = await res.json(); if (!Array.isArray(aeStats)) aeStats = []; }
+  } catch {}
+  lastFetch = Date.now();
+  renderAll();
+}
+
+// ── Cross-admin sync ─────────────────────────────────────
+// Two admins can review leads at the same time; without sync, a lead sent by
+// one still shows as sendable on the other's screen. Primary mechanism is a
+// Supabase Realtime broadcast: after any status-changing action the acting
+// browser announces it, and every other open dashboard refetches. Safety nets
+// (websockets drop silently): refetch on tab focus, plus a slow fallback poll.
+const clientId = (crypto.randomUUID ? crypto.randomUUID() : "c" + Math.random());
+let leadChannel = null;
+
+function initRealtime() {
+  if (!sb || leadChannel) return;
+  leadChannel = sb.channel("lead-updates");
+  leadChannel.on("broadcast", { event: "lead-status" }, ({ payload }) => {
+    if (!payload || payload.by === clientId) return;
+    silentRefresh(payload);
+  }).subscribe();
+}
+
+function broadcastLeadStatus(action, id) {
+  try {
+    leadChannel?.send({ type: "broadcast", event: "lead-status", payload: { by: clientId, action, id } });
+  } catch {}
+}
+
+async function silentRefresh(info) {
+  if (currentUser?.role !== "admin") return;
+  await fetchFromBackend();
+  refreshDrawerStatus();
+  if (info?.action === "sent") toast("A lead was sent by another admin — view refreshed", "ok");
+}
+
+// If the drawer is open when a background refresh lands, re-gate its status
+// badge and action buttons so a lead sent elsewhere can't be sent again from
+// here. Email inputs are left alone — the reviewer may be mid-edit.
+function refreshDrawerStatus() {
+  if (!selectedId) return;
+  const lead = leads.find(l => l.id == selectedId);
+  if (!lead) return;
+  document.getElementById("d-badge").innerHTML = badge(lead.status);
+  document.getElementById("action-row").style.display = ACTIONABLE.includes(lead.status) ? "flex" : "none";
+  document.getElementById("btn-reverse").style.display = REVERSIBLE.includes(lead.status) ? "block" : "none";
+}
+
+let autoRefreshInit = false;
+function initAutoRefresh() {
+  if (autoRefreshInit) return;
+  autoRefreshInit = true;
+  const maybeRefresh = (minAge) => {
+    if (currentUser?.role !== "admin" || document.hidden) return;
+    if (Date.now() - lastFetch < minAge) return;
+    silentRefresh();
+  };
+  document.addEventListener("visibilitychange", () => maybeRefresh(5000));
+  window.addEventListener("focus", () => maybeRefresh(5000));
+  setInterval(() => maybeRefresh(60000), 120000);
+}
+
+function renderAll() { renderStats(); renderAETable(); renderLeads(); renderAEDatalist(); updateDateUI(); }
+
+// Autocomplete for the drawer's "To" box, so re-pointing a lead doesn't mean
+// typing an AE address from memory.
+function renderAEDatalist() {
+  const dl = document.getElementById("ae-emails");
+  if (!dl) return;
+  dl.innerHTML = aeStats
+    .filter(a => a.active && a.email)
+    .map(a => `<option value="${a.email}">${a.name || ""}</option>`)
+    .join("");
+}
+
+function normDecision(d) {
+  const s = String(d || "").toLowerCase();
+  if (s === "approved") return "approve";
+  if (s === "disapproved" || s === "rejected") return "disapprove";
+  return s;
+}
+function renderStats() {
+  // Every stat card counts only classified leads. A lead whose Type of
+  // Transfer lands in "unknown" is almost always agent input error, and
+  // counting it skewed both the total and the live-transfer share — so it is
+  // dropped from the cards entirely. It still appears in the list below, and
+  // in the tab counts, which mirror the list.
+  const counted = leads.filter(l => transferBucket(l) !== "unknown");
+  document.getElementById("s-total").textContent = counted.length;
+  document.getElementById("s-not_sent").textContent = counted.filter(l => sendBucket(l.status) === "not_sent").length;
+  document.getElementById("s-sent").textContent = counted.filter(l => sendBucket(l.status) === "sent").length;
+  document.getElementById("s-rejected").textContent = counted.filter(l => sendBucket(l.status) === "rejected").length;
+
+  // Transfer-type breakdown. Percentages are of the classified leads in the
+  // current date range — they sum to ~100% since each of those lands in one
+  // of the three buckets.
+  const total = counted.length;
+  const byTransfer = { live: 0, scheduled: 0, email: 0 };
+  counted.forEach(l => byTransfer[transferBucket(l)]++);
+  for (const k of ["live", "scheduled", "email"]) {
+    document.getElementById("s-" + k).textContent = byTransfer[k];
+    document.getElementById("s-" + k + "-pct").textContent =
+      total ? `(${Math.round(byTransfer[k] / total * 100)}%)` : "";
+  }
+
+  // Tab counts respect the transfer filter, so they always match what the
+  // list below would show on each tab.
+  const tFilter = l => activeTransfer === "all" || transferBucket(l) === activeTransfer;
+  const tc = (id, fn) => { document.getElementById("tc-" + id).textContent = leads.filter(l => tFilter(l) && fn(l)).length; };
+  tc("all", () => true);
+  tc("not_sent", l => sendBucket(l.status) === "not_sent");
+  tc("sent", l => sendBucket(l.status) === "sent");
+  tc("rejected", l => sendBucket(l.status) === "rejected");
+  tc("ai_approve", l => normDecision(l.ai_decision) === "approve");
+  tc("ai_review",  l => normDecision(l.ai_decision) === "manual_review");
+}
+
+function renderAETable() {
+  const rows = (aeStats || []).map(ae => ({ name: ae.name, email: ae.email, sent: ae.sentCount ?? ae.todayCount ?? 0, pending: ae.pendingCount || 0 })).sort((a, b) => b.sent - a.sent);
+  document.getElementById("ae-sent-header").textContent = isToday() ? "Sent today" : "Sent · " + rangeLabel();
+  const tbody = document.getElementById("ae-tbody");
+  if (rows.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:24px">No AE data</td></tr>`; return; }
+  tbody.innerHTML = rows.map(ae => {
+    const initials = ae.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    return `<tr><td><span class="ae-avatar">${initials}</span>${ae.name}</td><td style="color:#6b7280">${ae.email}</td><td class="right ${ae.sent > 0 ? 'num-blue' : 'num-muted'}">${ae.sent}</td><td class="right ${ae.pending > 0 ? 'num-orange' : 'num-muted'}">${ae.pending > 0 ? ae.pending : "—"}</td></tr>`;
+  }).join("");
+}
+
+function getVisible() {
+  const filters = {
+    all: () => true,
+    not_sent:   l => sendBucket(l.status) === "not_sent",
+    sent:       l => sendBucket(l.status) === "sent",
+    rejected:   l => sendBucket(l.status) === "rejected",
+    ai_approve: l => normDecision(l.ai_decision) === "approve",
+    ai_review:  l => normDecision(l.ai_decision) === "manual_review",
+  };
+  let list = leads.filter(filters[activeTab] || filters.all);
+  if (activeTransfer !== "all") list = list.filter(l => transferBucket(l) === activeTransfer);
+  if (activeSort === "time_desc") list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  else if (activeSort === "time_asc") list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  else list.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status));
+  return list;
+}
+
+function renderLeads() {
+  const visible = getVisible();
+  const body = document.getElementById("lead-body");
+  if (visible.length === 0) {
+    body.innerHTML = `<div class="empty-leads">No leads in this view.</div>`;
+  } else {
+    body.innerHTML = visible.map((l, i) => {
+      const p = leadFields(l);
+      const t = isToday() ? fmtTime(l.created_at) : fmtDateTime(l.created_at);
+      const aeName = l.assigned_ae_name || "";
+      return `<div class="lead-row" onclick="openDrawer(${l.id})"><div class="row-num">${i+1}</div><div><div class="row-primary">${p.contact_name || "—"}</div><div class="row-secondary">${p.company || "Unknown"}</div></div><div class="row-ae ${aeName ? '' : 'no-ae'}">${aeName || "⚠ No AE"}</div><div class="row-transfer">${p.type_of_transfer || "—"}</div><div class="row-interest ${l.interest_level || ''}">${(l.interest_level || "—").toUpperCase()}</div><div>${aiBadge(l.ai_decision)}</div><div>${sendCell(l)}</div><div class="row-submitter ${l.submitted_by ? '' : 'none'}" title="${l.submitted_by || ''}">${l.submitted_by_name || l.submitted_by || "—"}</div><div class="row-reviewer ${l.reviewed_by ? '' : 'none'}" title="${l.reviewed_by || ''}">${l.reviewed_by || "—"}</div><div class="row-time">${t}</div></div>`;
+    }).join("");
+  }
+  document.getElementById("lead-footer").textContent = `${visible.length} lead${visible.length !== 1 ? "s" : ""} · ${isToday() ? "resets at midnight" : rangeLabel()}`;
+}
+
+// ── Drawer ────────────────────────────────────────────────
+// keepTab: re-render in place without yanking the reviewer back to the Info
+// tab (used after a save, so the edited fields refresh under them).
+function openDrawer(id, keepTab) {
+  const lead = leads.find(l => l.id == id);
+  if (!lead) return;
+  selectedId = id;
+  const p = leadFields(lead);
+  document.getElementById("d-company").textContent = p.company || "Lead #" + id;
+  document.getElementById("d-badge").innerHTML = badge(lead.status);
+  document.getElementById("d-sub").textContent = [p.contact_name, p.phone, p.email].filter(Boolean).join(" · ");
+
+  const fields = [
+    ["Company", p.company], ["Contact", p.contact_name], ["Phone", p.phone],
+    ["Email", p.email], ["Transfer type", p.type_of_transfer], ["Interest", lead.interest_level],
+    ["AI decision", lead.ai_decision], ["Submitted by", lead.submitted_by_name || lead.submitted_by],
+    ["Assigned AE", lead.assigned_ae_name], ["AE email", lead.assigned_ae_email],
+    ["CC", lead.cc], ["Session", p.session_link ? `<a href="${p.session_link}" target="_blank">Open ↗</a>` : null],
+    ["Reviewed at", lead.reviewed_at ? new Date(lead.reviewed_at).toLocaleString() : null],
+    ["Reviewed by", lead.reviewed_by],
+    ["Sent at", lead.sent_at ? new Date(lead.sent_at).toLocaleString() : null],
+  ];
+  document.getElementById("detail-fields").innerHTML = fields.filter(([,v]) => v).map(([l,v]) => `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join("");
+
+  if (lead.ai_explanation) { document.getElementById("ai-note-wrap").style.display = "block"; document.getElementById("d-ai-explanation").textContent = lead.ai_explanation; }
+  else { document.getElementById("ai-note-wrap").style.display = "none"; }
+
+  const histRows = [
+    lead.reviewed_at && lead.reviewed_by ? `<div class="history-row"><strong>reviewed</strong> · by ${lead.reviewed_by} · ${fmtDateTime(lead.reviewed_at)}</div>` : null,
+    lead.sent_at ? `<div class="history-row"><strong>email sent</strong> · ${fmtDateTime(lead.sent_at)}</div>` : null,
+  ].filter(Boolean);
+  if (histRows.length) { document.getElementById("history-wrap").style.display = "block"; document.getElementById("d-history").innerHTML = histRows.join(""); }
+  else { document.getElementById("history-wrap").style.display = "none"; }
+
+  document.getElementById("d-email-subject").value = lead.email_subject || "";
+  document.getElementById("d-email-to").value = lead.assigned_ae_email || "";
+  document.getElementById("d-email-cc").value = lead.cc || "";
+  document.getElementById("d-email-body").value = lead.email_body || "";
+  document.getElementById("d-email-hint").textContent = "";
+  document.getElementById("d-raw").textContent = lead.raw_lead_msg || "—";
+
+  // Action/reverse buttons are gated by lead STATUS only — not by the viewing
+  // date. A reviewer must be able to approve/disapprove/reverse a lead even
+  // when looking at a past date range (e.g. reversing something approved days
+  // ago). Previously these were also gated behind isToday(), which hid the
+  // buttons for any lead not created today.
+  const canAct = ACTIONABLE.includes(lead.status);
+  const canRev = REVERSIBLE.includes(lead.status);
+  document.getElementById("action-row").style.display = canAct ? "flex" : "none";
+  document.getElementById("btn-reverse").style.display = canRev ? "block" : "none";
+
+  if (!keepTab) {
+    document.querySelectorAll(".drawer-tab").forEach(t => t.classList.toggle("active", t.dataset.panel === "info"));
+    document.querySelectorAll(".drawer-panel").forEach(p => p.classList.toggle("active", p.id === "panel-info"));
+  }
+  document.getElementById("overlay").classList.add("open");
+  document.getElementById("drawer").classList.add("open");
+}
+
+function closeDrawer() { selectedId = null; document.getElementById("overlay").classList.remove("open"); document.getElementById("drawer").classList.remove("open"); }
+function setDrawerTab(btn) { document.querySelectorAll(".drawer-tab").forEach(t => t.classList.remove("active")); document.querySelectorAll(".drawer-panel").forEach(p => p.classList.remove("active")); btn.classList.add("active"); document.getElementById("panel-" + btn.dataset.panel).classList.add("active"); }
+
+// Local mirror of renderGreeting()/firstName() in
+// supabase/functions/lead-distribution/index.ts — keep the two in sync. This
+// copy only previews the change in the drawer; the backend still owns what is
+// stored and sent.
+function firstName(fullName) { return (fullName || "").trim().split(/\s+/)[0] || "Team"; }
+function renderGreeting(body, aeName) {
+  if (!body) return body;
+  const name = firstName(aeName);
+  if (body.includes("{{AE_NAME}}")) return body.split("{{AE_NAME}}").join(name);
+  return body.replace(/^([ \t]*Hi)[ \t]+[^,\n]+,/, (_m, hi) => `${hi} ${name},`);
+}
+
+// Resolve a typed "To" value against the roster the page already loaded for the
+// tracker table. Matches email or name, like findAEByName() on the backend.
+function findAE(nameOrEmail) {
+  const q = (nameOrEmail || "").trim().toLowerCase();
+  if (!q) return null;
+  return aeStats.find(a => (a.email || "").trim().toLowerCase() === q
+                        || (a.name  || "").trim().toLowerCase() === q) || null;
+}
+
+// Re-point the drawer at a different AE. CC and the greeting follow the
+// recipient — the roster's two CC groups differ, and a body left addressed to
+// the previous AE is exactly how lead 164 reached Max Duffin saying "Hi Johnny,".
+// Showing it here means the reviewer sees the real email before saving; the
+// backend re-derives the same values on save, so this is a preview, not the
+// source of truth.
+function onToChanged() {
+  const hint = document.getElementById("d-email-hint");
+  const toEl = document.getElementById("d-email-to");
+  const ae = findAE(toEl.value);
+  hint.style.color = "#d97706";
+  if (!ae) {
+    hint.textContent = "⚠ Not a known AE — will send to this address as typed";
+    return;
+  }
+  toEl.value = ae.email;
+  const cc = (ae.cc_recipients || []).map(s => String(s).trim()).filter(Boolean);
+  document.getElementById("d-email-cc").value = cc.length ? cc.join(",") : DEFAULT_CC;
+  const bodyEl = document.getElementById("d-email-body");
+  bodyEl.value = renderGreeting(bodyEl.value, ae.name);
+  hint.textContent = `Re-pointed to ${ae.name} — CC and greeting updated. Save changes to apply.`;
+}
+
+// ── Save edited email fields ─────────────────────────────
+
+// What's currently typed into the drawer's email panel.
+function emailEdits() {
+  return {
+    email_subject: document.getElementById("d-email-subject").value,
+    assigned_ae_email: document.getElementById("d-email-to").value,
+    cc: document.getElementById("d-email-cc").value,
+    email_body: document.getElementById("d-email-body").value,
+  };
+}
+
+// True when the panel differs from what's stored on the lead.
+function emailFieldsDirty() {
+  const lead = leads.find(l => l.id == selectedId);
+  if (!lead) return false;
+  const e = emailEdits();
+  return e.email_subject     !== (lead.email_subject || "")
+      || e.assigned_ae_email !== (lead.assigned_ae_email || "")
+      || e.cc                !== (lead.cc || "")
+      || e.email_body        !== (lead.email_body || "");
+}
+
+// One rule for sending: whatever is stored on the row is what goes out, so
+// unsaved edits must be committed by an explicit Save first. Send never saves
+// on your behalf — it stops and points you at the button, so you always know
+// what you're about to mail. Returns true when the caller should abort.
+function blockIfUnsaved() {
+  if (!emailFieldsDirty()) return false;
+  // Surface the fields that need saving — the reviewer may be on the Info tab.
+  document.querySelectorAll(".drawer-tab").forEach(t => t.classList.toggle("active", t.dataset.panel === "email"));
+  document.querySelectorAll(".drawer-panel").forEach(p => p.classList.toggle("active", p.id === "panel-email"));
+  const hint = document.getElementById("d-email-hint");
+  hint.textContent = "Unsaved changes — click Save changes before sending";
+  hint.style.color = "#dc2626";
+  toast("Unsaved changes — click Save changes first", "warn");
+  return true;
+}
+
+// PATCH the edits and fold the response into the local lead. Returns an error
+// string on failure, null on success.
+async function patchEmailFields() {
+  try {
+    const res = await fetch(`${API_BASE}/leads/${selectedId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(emailEdits()),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return err.error || String(res.status);
+    }
+    const updated = await res.json();
+    const idx = leads.findIndex(l => l.id == selectedId);
+    // Merge, don't replace: PATCH returns the raw row, without the `parsed`
+    // and `submitted_by_name` fields the GET route derives server-side.
+    if (idx >= 0) leads[idx] = { ...leads[idx], ...updated };
+    return null;
+  } catch (e) {
+    return e.message;
+  }
+}
+
+async function handleSaveEmail() {
+  if (!selectedId) return;
+  const btn = document.getElementById("btn-save-email");
+  const hint = document.getElementById("d-email-hint");
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Saving…";
+  const err = await patchEmailFields();
+  if (err === null) {
+    renderAll();
+    // Re-render the drawer so the Info tab's Assigned AE / AE email / CC show
+    // the re-point that PATCH just made. Keep the reviewer on the Email tab.
+    openDrawer(selectedId, true);
+    hint.textContent = "Saved";
+    hint.style.color = "#16a34a";
+    setTimeout(() => { hint.textContent = ""; hint.style.color = ""; }, 2000);
+  } else {
+    hint.textContent = "Save failed: " + err;
+    hint.style.color = "#dc2626";
+  }
+  btn.disabled = false;
+  btn.textContent = oldText;
+}
+
+// ── Row-level Send (inline button in the lead table) ─────
+async function handleRowSend(ev, id) {
+  ev.stopPropagation();  // don't open drawer
+  if (busy) return;
+  // Same rule as the drawer's Send: never mail stale values out from under an
+  // edit in progress. Only applies when the drawer is open on THIS lead.
+  if (selectedId == id && blockIfUnsaved()) return;
+  busy = true;
+  const btn = ev.currentTarget;
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Sending…";
+  try {
+    const res = await fetch(`${API_BASE}/leads/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewed_by: reviewerName() }),
+    });
+    const result = await res.json();
+    if (res.ok) {
+      await fetchFromBackend();
+      broadcastLeadStatus(result.status === "email_sent" ? "sent" : "updated", id);
+      toast(result.status === "email_sent" ? "Sent" : "Approved (email not configured)", result.status === "email_sent" ? "ok" : "warn");
+    } else {
+      btn.disabled = false;
+      btn.textContent = original;
+      toast("Send failed: " + (result.error || res.status), "err");
+    }
+  } catch {
+    btn.disabled = false;
+    btn.textContent = original;
+    toast("Send failed — cannot reach server", "err");
+  }
+  busy = false;
+}
+
+// ── Actions (with reviewed_by = current admin's first name) ──────
+// First name only — the admin dashboard is shared by several people, so
+// "reviewed by" should show who actually acted, not a generic "Human".
+function reviewerName() {
+  return (currentUser?.name || "Human").trim().split(/\s+/)[0] || "Human";
+}
+
+async function handleApprove() {
+  if (busy || !selectedId) return;
+  if (blockIfUnsaved()) return;
+  busy = true; setBusy(true);
+  try {
+    const res = await fetch(`${API_BASE}/leads/${selectedId}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewed_by: reviewerName() }),
+    });
+    const result = await res.json();
+    if (res.ok) {
+      await fetchFromBackend();
+      broadcastLeadStatus(result.status === "email_sent" ? "sent" : "updated", selectedId);
+      toast(result.status === "email_sent" ? "Approved — email sent" : "Approved (email not configured yet)", result.status === "email_sent" ? "ok" : "warn");
+      closeDrawer();
+    } else { toast("Approve failed: " + (result.error || res.status), "err"); }
+  } catch { toast("Approve failed — cannot reach server", "err"); }
+  busy = false; setBusy(false);
+}
+
+async function handleDisapprove() {
+  if (busy || !selectedId) return;
+  busy = true; setBusy(true);
+  try {
+    const res = await fetch(`${API_BASE}/leads/${selectedId}/disapprove`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewed_by: reviewerName() }),
+    });
+    const result = await res.json();
+    if (res.ok) { await fetchFromBackend(); broadcastLeadStatus("updated", selectedId); toast("Lead disapproved", "ok"); closeDrawer(); }
+    else { toast("Disapprove failed: " + (result.error || res.status), "err"); }
+  } catch { toast("Disapprove failed", "err"); }
+  busy = false; setBusy(false);
+}
+
+async function handleReverse() {
+  if (busy || !selectedId) return;
+  busy = true; setBusy(true);
+  try {
+    const res = await fetch(`${API_BASE}/leads/${selectedId}/reverse`, { method: "POST" });
+    if (res.ok) { await fetchFromBackend(); broadcastLeadStatus("updated", selectedId); toast("Reversed → manual review", "ok"); closeDrawer(); }
+    else { toast("Reverse failed", "err"); }
+  } catch { toast("Reverse failed", "err"); }
+  busy = false; setBusy(false);
+}
+
+function setBusy(b) {
+  document.getElementById("btn-approve").disabled = b;
+  document.getElementById("btn-disapprove").disabled = b;
+  document.getElementById("btn-reverse").disabled = b;
+  document.getElementById("btn-approve").textContent = b ? "Sending…" : "Approve & send";
+}
+
+// ── Tabs / Sort ──────────────────────────────────────────
+function setTab(btn) { document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); activeTab = btn.dataset.tab; renderLeads(); }
+function setSort(btn) { document.querySelectorAll("#sort-dropdown .sort-option").forEach(b => b.classList.remove("active")); btn.classList.add("active"); activeSort = btn.dataset.sort; document.getElementById("sort-label").textContent = btn.textContent; document.getElementById("sort-dropdown").classList.remove("open"); renderLeads(); }
+function toggleSortDrop(e) { e.stopPropagation(); document.getElementById("transfer-dropdown").classList.remove("open"); document.getElementById("sort-dropdown").classList.toggle("open"); }
+function setTransferFilter(btn) { document.querySelectorAll("#transfer-dropdown .sort-option").forEach(b => b.classList.remove("active")); btn.classList.add("active"); activeTransfer = btn.dataset.transfer; document.getElementById("transfer-label").textContent = btn.textContent; document.getElementById("transfer-dropdown").classList.remove("open"); renderStats(); renderLeads(); }
+function toggleTransferDrop(e) { e.stopPropagation(); document.getElementById("sort-dropdown").classList.remove("open"); document.getElementById("transfer-dropdown").classList.toggle("open"); }
+
+// ── Date range ───────────────────────────────────────────
+function updateDateUI() {
+  document.getElementById("date-btn-label").textContent = rangeLabel();
+  const today = todayKey();
+  const opts = [
+    { label: "Today",        from: today,            to: today },
+    { label: "Yesterday",    from: addDays(today,-1), to: addDays(today,-1) },
+    { label: "Last 7 days",  from: addDays(today,-6), to: today },
+    { label: "Last 30 days", from: addDays(today,-29), to: today },
+  ];
+  document.getElementById("date-options-list").innerHTML = opts.map(o =>
+    `<button class="date-option ${dateFrom===o.from&&dateTo===o.to?'active':''}" onclick="selectRange('${o.from}','${o.to}')">${o.label}</button>`
+  ).join("");
+  const fi = document.getElementById("date-from-input");
+  const ti = document.getElementById("date-to-input");
+  if (fi) fi.value = dateFrom;
+  if (ti) ti.value = dateTo;
+}
+function toggleDateDrop(e) { e.stopPropagation(); updateDateUI(); document.getElementById("date-dropdown").classList.toggle("open"); }
+function selectRange(from, to) { dateFrom = from; dateTo = to; document.getElementById("date-dropdown").classList.remove("open"); closeDrawer(); fetchFromBackend(); }
+function onCustomRange() {
+  const f = document.getElementById("date-from-input").value;
+  const t = document.getElementById("date-to-input").value;
+  if (!f || !t) return;               // wait until both ends are set
+  if (f > t) { dateFrom = t; dateTo = f; } else { dateFrom = f; dateTo = t; }
+  document.getElementById("date-dropdown").classList.remove("open"); closeDrawer(); fetchFromBackend();
+}
+
+// ── Global ───────────────────────────────────────────────
+document.addEventListener("click", () => { document.getElementById("date-dropdown").classList.remove("open"); document.getElementById("sort-dropdown").classList.remove("open"); document.getElementById("transfer-dropdown").classList.remove("open"); });
+
+let toastTimer;
+function toast(msg, type = "ok") { const el = document.getElementById("toast"); el.textContent = msg; el.className = "show " + type; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = ""; }, 3200); }
+
+// ══════════════════════════════════════════════════════════════════════════
+// DEMO MODE — activates when Supabase URL is a placeholder
+// ══════════════════════════════════════════════════════════════════════════
+const DEMO_MODE = SUPABASE_URL.includes("YOUR_SUPABASE");
+
+if (DEMO_MODE) {
+  const DEMO_USERS = {
+    "admin@demo.com": { id: 1, email: "admin@demo.com", name: "Demo Admin", role: "admin" },
+    "agent@demo.com": { id: 2, email: "agent@demo.com", name: "Demo Agent", role: "agent" },
+  };
+
+  const _today = new Date().toISOString().slice(0, 10);
+  const _yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const _twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+  const ts = (day, h, m) => day + "T" + String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") + ":00.000Z";
+
+  const DEMO_AES = [
+    { id: 1, name: "Sarah Chen", email: "sarah.chen@example.com", active: true, sentCount: 2, todayCount: 2, pendingCount: 1 },
+    { id: 2, name: "Mike Johnson", email: "mike.j@example.com", active: true, sentCount: 1, todayCount: 1, pendingCount: 0 },
+    { id: 3, name: "Alex Rivera", email: "alex.r@example.com", active: true, sentCount: 1, todayCount: 1, pendingCount: 1 },
+  ];
+
+  // Raw messages — these are the core content that appears in emails
+  const RAW1 = "Context: Spoke with decision maker about enterprise AI integration for their sales team. They currently use Salesforce but need AI-powered lead scoring.\nCompany: Acme Corp\nContact name: John Smith\nPhone: (555) 123-4567\nEmail: john@acmecorp.com\nType of Transfer: Live Transfer";
+  const RAW2 = "Context: Initial inquiry about pricing and capabilities. Contact asked detailed questions about API integration and data security compliance.\nCompany: TechFlow Inc\nContact name: Lisa Wang\nPhone: 555-987-6543\nEmail: lisa@techflow.io\nType of Transfer: EMAIL";
+  const RAW3 = "Context: Caller was asking about free trial only, no business need identified. Student working on a class project.\nCompany: N/A\nContact name: Bob Test\nPhone: 555-000-0000\nEmail: bob@random.com\nType of Transfer: EMAIL";
+  const RAW4 = "Context: Referral from existing client GlobalServe. Looking for workflow automation to replace manual lead handoff across 3 regional offices.\nCompany: Brightpath Solutions\nContact name: Maria Garcia\nPhone: (555) 456-7890\nEmail: maria@brightpath.com\nType of Transfer: Call scheduled at 2pm EST";
+  const RAW5 = "Context: Inbound demo request from LinkedIn campaign. VP Operations interested in reducing lead response time from 4 hours to under 15 minutes.\nCompany: Sunrise Digital\nContact name: David Kim\nPhone: 555-222-3333\nEmail: david@sunrisedigital.co\nType of Transfer: Live Transfer";
+  const RAW6 = "Context: Called in asking generic questions, would not confirm company name or role. Possibly competitor research.\nCompany: Unknown\nContact name: Jane Doe\nPhone: 555-111-0000\nEmail: jane@unknown.com\nType of Transfer: N/A";
+  const RAW7 = "Context: Existing prospect follow-up. Previously expressed interest in Q2 but delayed due to budget freeze. Budget now approved for Q3.\nCompany: NovaTech Industries\nContact name: Robert Chen\nPhone: (555) 333-8888\nEmail: robert.chen@novatech.com\nType of Transfer: Scheduled callback tomorrow 10am";
+  const RAW8 = "Context: Small business owner looking for affordable solution. Currently handles 5-10 leads per day manually via spreadsheet.\nCompany: LocalPro Services\nContact name: Amy Liu\nPhone: 555-444-9999\nEmail: amy@localpro.com\nType of Transfer: EMAIL";
+
+  const makeEmail = (aeName, rawMsg) =>
+    "Hi " + aeName + ",\n\nPlease review and follow up on the lead below:\n\n" + rawMsg + "\n\n\nBest Regards,\nLead Distribution System";
+
+  const DEMO_LEADS = [
+    // ── TODAY ──
+    {
+      id: 1, status: "email_sent", ai_decision: "approve", interest_level: "high",
+      raw_lead_msg: RAW1,
+      ai_explanation: "High-intent lead. Decision maker with budget authority, clear pain point (current Salesforce limitations), and timeline urgency for Q3.",
+      email_subject: "New Lead — Acme Corp (Warm Transfer)", email_body: makeEmail("Sarah", RAW1),
+      assigned_ae_id: 1, assigned_ae_name: "Sarah Chen", assigned_ae_email: "sarah.chen@example.com",
+      cc: "", submitted_by: "agent@demo.com", created_at: ts(_today, 9, 15), reviewed_at: null, reviewed_by: null, sent_at: ts(_today, 9, 15),
+    },
+    {
+      id: 2, status: "pending_manual_review", ai_decision: "manual_review", interest_level: "medium",
+      raw_lead_msg: RAW2,
+      ai_explanation: "Medium interest — asked detailed technical questions (API, compliance) suggesting real evaluation, but did not confirm decision-making authority or timeline.",
+      email_subject: "New Lead — TechFlow Inc (Review Needed)", email_body: makeEmail("Alex", RAW2),
+      assigned_ae_id: 3, assigned_ae_name: "Alex Rivera", assigned_ae_email: "alex.r@example.com",
+      cc: "", submitted_by: "agent@demo.com", created_at: ts(_today, 10, 30), reviewed_at: null, reviewed_by: null, sent_at: null,
+    },
+    {
+      id: 3, status: "ai_disapproved", ai_decision: "disapprove", interest_level: "low",
+      raw_lead_msg: RAW3,
+      ai_explanation: "No business need. Caller is a student working on a class project, not a potential customer.",
+      email_subject: "", email_body: "",
+      assigned_ae_id: null, assigned_ae_name: "", assigned_ae_email: "",
+      cc: "", submitted_by: "agent@demo.com", created_at: ts(_today, 11, 0), reviewed_at: null, reviewed_by: null, sent_at: null,
+    },
+    {
+      id: 5, status: "ai_approved", ai_decision: "approve", interest_level: "high",
+      raw_lead_msg: RAW5,
+      ai_explanation: "Inbound demo request from targeted campaign. VP-level contact with quantified pain point (4hr response time). High conversion probability.",
+      email_subject: "New Lead — Sunrise Digital (Demo Request)", email_body: makeEmail("Sarah", RAW5),
+      assigned_ae_id: 1, assigned_ae_name: "Sarah Chen", assigned_ae_email: "sarah.chen@example.com",
+      cc: "", submitted_by: "agent@demo.com", created_at: ts(_today, 14, 20), reviewed_at: null, reviewed_by: null, sent_at: null,
+    },
+
+    // ── YESTERDAY ──
+    {
+      id: 4, status: "email_sent", ai_decision: "approve", interest_level: "high",
+      raw_lead_msg: RAW4,
+      ai_explanation: "Client referral with confirmed need for multi-office workflow automation. High intent — referral source is trusted existing client.",
+      email_subject: "New Lead — Brightpath Solutions (Client Referral)", email_body: makeEmail("Alex", RAW4),
+      assigned_ae_id: 3, assigned_ae_name: "Alex Rivera", assigned_ae_email: "alex.r@example.com",
+      cc: "", submitted_by: "agent@demo.com", created_at: ts(_yesterday, 13, 45), reviewed_at: null, reviewed_by: null, sent_at: ts(_yesterday, 13, 45),
+    },
+    {
+      id: 6, status: "human_disapproved", ai_decision: "manual_review", interest_level: "low",
+      raw_lead_msg: RAW6,
+      ai_explanation: "Unclear intent. Contact refused to share company or role. Possible competitor research. Flagged for manual review.",
+      email_subject: "New Lead — Unknown Contact (Review Needed)", email_body: makeEmail("Mike", RAW6),
+      assigned_ae_id: 2, assigned_ae_name: "Mike Johnson", assigned_ae_email: "mike.j@example.com",
+      cc: "", submitted_by: "agent@demo.com", created_at: ts(_yesterday, 8, 50), reviewed_at: ts(_yesterday, 9, 5), reviewed_by: "Admin", sent_at: null,
+    },
+    {
+      id: 7, status: "email_sent", ai_decision: "approve", interest_level: "high",
+      raw_lead_msg: RAW7,
+      ai_explanation: "Returning prospect with renewed budget. Previously qualified in Q2, delayed by budget freeze. Budget now confirmed for Q3.",
+      email_subject: "New Lead — NovaTech Industries (Returning Prospect)", email_body: makeEmail("Mike", RAW7),
+      assigned_ae_id: 2, assigned_ae_name: "Mike Johnson", assigned_ae_email: "mike.j@example.com",
+      cc: "", submitted_by: "agent@demo.com", created_at: ts(_yesterday, 15, 10), reviewed_at: null, reviewed_by: null, sent_at: ts(_yesterday, 15, 10),
+    },
+
+    // ── TWO DAYS AGO ──
+    {
+      id: 8, status: "pending_manual_review", ai_decision: "manual_review", interest_level: "medium",
+      raw_lead_msg: RAW8,
+      ai_explanation: "Small business with genuine need but low volume (5-10 leads/day). May not meet minimum contract threshold. Flagged for manual review.",
+      email_subject: "New Lead — LocalPro Services (Review Needed)", email_body: makeEmail("Sarah", RAW8),
+      assigned_ae_id: 1, assigned_ae_name: "Sarah Chen", assigned_ae_email: "sarah.chen@example.com",
+      cc: "", submitted_by: "agent@demo.com", created_at: ts(_twoDaysAgo, 16, 0), reviewed_at: null, reviewed_by: null, sent_at: null,
+    },
+  ];
+
+  // Override auth
+  initAuth = function() { showPage("login-page"); };
+
+  handleLogin = async function() {
+    const email = document.getElementById("login-email").value.trim().toLowerCase();
+    const pass = document.getElementById("login-password").value;
+    const user = DEMO_USERS[email];
+    if (!user || pass !== "demo") {
+      return showLoginError("Demo accounts: admin@demo.com or agent@demo.com (password: demo)");
+    }
+    currentUser = { ...user };
+    if (user.role === "admin") {
+      document.getElementById("admin-user-chip").textContent = user.name;
+      showPage("admin-page");
+      leads = JSON.parse(JSON.stringify(DEMO_LEADS.filter(l => {
+        const d = l.created_at.slice(0, 10);
+        return d >= dateFrom && d <= dateTo;
+      })));
+      aeStats = JSON.parse(JSON.stringify(DEMO_AES));
+      renderAll();
+    } else {
+      document.getElementById("agent-user-chip").textContent = user.name;
+      showPage("agent-page");
+      mySubmissions = JSON.parse(JSON.stringify(DEMO_LEADS.filter(l => l.submitted_by === user.email)));
+      renderMySubmissions();
+    }
+  };
+
+  handleLogout = async function() {
+    currentUser = null;
+    showPage("login-page");
+  };
+
+  fetchFromBackend = async function() {
+    leads = JSON.parse(JSON.stringify(DEMO_LEADS.filter(l => {
+      const d = l.created_at.slice(0, 10);
+      return d >= dateFrom && d <= dateTo;
+    })));
+    // Recalculate AE stats for the selected date range
+    aeStats = DEMO_AES.map(ae => {
+      const aeLeads = leads.filter(l => l.assigned_ae_id === ae.id);
+      return {
+        ...ae,
+        sentCount: aeLeads.filter(l => l.status === "email_sent").length,
+        todayCount: aeLeads.filter(l => l.status === "email_sent").length,
+        pendingCount: aeLeads.filter(l => l.status === "pending_manual_review").length,
+      };
+    });
+    renderAll();
+  };
+
+  loadMySubmissions = async function() {
+    mySubmissions = JSON.parse(JSON.stringify(DEMO_LEADS.filter(l => l.submitted_by === currentUser?.email)));
+    renderMySubmissions();
+  };
+
+  handleApprove = async function() {
+    if (busy || !selectedId) return;
+    const lead = DEMO_LEADS.find(l => l.id === selectedId);
+    if (!lead) return;
+    lead.status = "email_sent";
+    lead.sent_at = new Date().toISOString();
+    lead.reviewed_by = (currentUser?.name || "Human").split(/\s+/)[0];
+    lead.reviewed_at = new Date().toISOString();
+    await fetchFromBackend(); closeDrawer();
+    toast("Approved — email sent (demo)", "ok");
+  };
+
+  handleDisapprove = async function() {
+    if (busy || !selectedId) return;
+    const lead = DEMO_LEADS.find(l => l.id === selectedId);
+    if (!lead) return;
+    lead.status = "human_disapproved";
+    lead.reviewed_by = (currentUser?.name || "Human").split(/\s+/)[0];
+    lead.reviewed_at = new Date().toISOString();
+    await fetchFromBackend(); closeDrawer();
+    toast("Lead disapproved (demo)", "ok");
+  };
+
+  handleReverse = async function() {
+    if (busy || !selectedId) return;
+    const lead = DEMO_LEADS.find(l => l.id === selectedId);
+    if (!lead) return;
+    lead.status = "pending_manual_review";
+    lead.reviewed_by = null;
+    lead.reviewed_at = null;
+    lead.sent_at = null;
+    await fetchFromBackend(); closeDrawer();
+    toast("Reversed → manual review (demo)", "ok");
+  };
+
+  handleRowSend = async function(ev, id) {
+    ev.stopPropagation();
+    const lead = DEMO_LEADS.find(l => l.id === id);
+    if (!lead) return;
+    lead.status = "email_sent";
+    lead.sent_at = new Date().toISOString();
+    await fetchFromBackend();
+    toast("Sent (demo)", "ok");
+  };
+
+  handleSaveEmail = async function() {
+    if (!selectedId) return;
+    const lead = DEMO_LEADS.find(l => l.id === selectedId);
+    if (!lead) return;
+    lead.email_subject = document.getElementById("d-email-subject").value;
+    lead.assigned_ae_email = document.getElementById("d-email-to").value;
+    lead.cc = document.getElementById("d-email-cc").value;
+    lead.email_body = document.getElementById("d-email-body").value;
+    const idx = leads.findIndex(l => l.id === selectedId);
+    if (idx >= 0) leads[idx] = { ...lead };
+    renderAll();
+    const hint = document.getElementById("d-email-hint");
+    hint.textContent = "Saved (demo)";
+    hint.style.color = "#16a34a";
+    setTimeout(() => { hint.textContent = ""; }, 2000);
+  };
+
+  handleAgentRun = function() {
+    const rawMsg = document.getElementById("agent-raw-msg").value.trim();
+    if (!rawMsg) { const r = document.getElementById("agent-result"); r.className = "run-result err"; r.textContent = "Please paste the lead message."; return; }
+    const parsed = parseRaw(rawMsg);
+    const aeName = DEMO_AES[0].name.split(" ")[0];
+    const newLead = {
+      id: Date.now(), status: "pending_manual_review", ai_decision: "manual_review", interest_level: "medium",
+      raw_lead_msg: rawMsg,
+      ai_explanation: "Demo mode — lead flagged for manual review.",
+      email_subject: "New Lead — " + (parsed.company || "Unknown") + " (Review Needed)",
+      email_body: "Hi " + aeName + ",\n\nPlease review and follow up on the lead below:\n\n" + rawMsg + "\n\n\nBest Regards,\nLead Distribution System",
+      assigned_ae_id: DEMO_AES[0].id, assigned_ae_name: DEMO_AES[0].name, assigned_ae_email: DEMO_AES[0].email,
+      cc: "", submitted_by: currentUser?.email || "agent", created_at: new Date().toISOString(),
+      reviewed_at: null, reviewed_by: null, sent_at: null,
+    };
+    DEMO_LEADS.unshift(newLead);
+    document.getElementById("agent-raw-msg").value = "";
+    document.getElementById("agent-recording").value = "";
+    const r = document.getElementById("agent-result");
+    r.className = "run-result ok";
+    r.textContent = "Lead processed (demo mode).";
+    mySubmissions = JSON.parse(JSON.stringify(DEMO_LEADS.filter(l => l.submitted_by === currentUser?.email)));
+    renderMySubmissions();
+    toast("Lead processed (demo)", "ok");
+  };
+
+  console.log("🟡 DEMO MODE — using sample data. Accounts: admin@demo.com / agent@demo.com (password: demo)");
+}
+
+
+
+// ── Boot ─────────────────────────────────────────────────
+initAuth();
+</script>
+</body>
+</html>

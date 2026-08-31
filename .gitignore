@@ -1,0 +1,8 @@
+node_modules
+.vercel
+.env*
+.vscode
+.claude
+*.bak
+_test_payload.json
+supabase/.temp/

@@ -1,0 +1,9 @@
+.env
+node_modules
+server.js
+server.legacy.js.bak
+test-email.js
+_test_payload.json
+supabase
+.claude
+.vscode
